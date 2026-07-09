@@ -8,8 +8,16 @@ library(ggbeeswarm); library(ggpubr); library(rstatix); library(readr)
 library(RColorBrewer); library(viridis); library(Cairo); library(tidyr)
 library(ggrepel)
 
+# Resolve paths relative to this script when sourced, with getwd() fallback.
+script_dir <- tryCatch({
+  ofile <- sys.frame(1)$ofile
+  if (is.null(ofile)) getwd() else dirname(normalizePath(ofile, winslash = "/", mustWork = FALSE))
+}, error = function(e) getwd())
+out_dir <- file.path(script_dir, "figures")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
 # ---- Load data ----
-load("fig3.RData", verbose = TRUE)
+load(file.path(script_dir, "fig3.RData"), verbose = TRUE)
 # Objects: fig3_strain, fig3_radar_data, fig3_radar_summary, fig3_mz_dz,
 #          fig3c_twin_effect, fig3_heatmap, fig3_pie
 
@@ -37,8 +45,8 @@ theme_journal <- function(base_size = 11) {
 theme_set(theme_journal())
 
 sp <- function(p, name, w = 7, h = 5) {
-  ggsave(paste0(name, ".png"), p, width = w, height = h, dpi = 300, bg = "white")
-  ggsave(paste0(name, ".pdf"), p, width = w, height = h, device = cairo_pdf, bg = "white")
+  ggsave(file.path(out_dir, paste0(name, ".png")), p, width = w, height = h, dpi = 300, bg = "white")
+  ggsave(file.path(out_dir, paste0(name, ".pdf")), p, width = w, height = h, device = cairo_pdf, bg = "white")
 }
 
 # ============================================================
@@ -201,52 +209,80 @@ for (sp_name in species_list) {
 cat("  3C done.\n")
 
 # ============================================================
-# Fig 3D — Heritability heatmap + pie (age-dependent dynamics)
+# Fig 3D - distance-metric robustness of MZ-DZ strain distances
 # ============================================================
-cat("\n=== Fig 3D: Heritability dynamics ===\n")
-heatmap_data <- fig3_heatmap
-pie_data     <- fig3_pie
+cat("\n=== Fig 3D: distance-metric robustness ===\n")
+long_df <- fig3d_pairwise_distances_long %>%
+  filter(!is.na(distance), !is.na(zygosity))
+summary_df <- fig3d_metric_summary
 
-heatmap_colors <- c("#86c2c1", "#418e88", "#1b7b82", "#095f67")
-pie_colors     <- c("Decreasing" = "#3288BD", "Stable" = "#E0E0E0", "Increasing" = "#D53E4F")
-age_levels     <- c("Infancy (0-3y)", "Childhood (3-18y)", "Adulthood (>18y)")
-x_labels_short <- c("Infancy", "Childhood", "Adulthood")
-heatmap_data$age_group <- factor(heatmap_data$age_group, levels = age_levels)
-pie_data$trend_category <- factor(pie_data$trend_category, levels = c("Decreasing", "Stable", "Increasing"))
+metric_labels <- c("p-distance", "Jukes-Cantor", "Kimura-2P")
+long_df$metric <- factor(long_df$metric, levels = metric_labels)
+long_df$zygosity <- factor(long_df$zygosity, levels = c("MZ", "DZ"))
+summary_df$metric <- factor(summary_df$metric, levels = metric_labels)
 
-p_pie <- ggplot(pie_data, aes(x = "", y = prop, fill = trend_category)) +
-  geom_bar(stat = "identity", width = 1, color = "white", linewidth = 1.5) +
-  coord_polar("y", start = 0) +
-  geom_text(aes(label = label), position = position_stack(vjust = 0.5), size = 4, fontface = "bold", color = c("white","grey30","white")) +
-  scale_fill_manual(values = pie_colors, name = "Trend Category") +
-  labs(title = "Proportion of\nHeritability Trends") +
-  theme_void() + theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14), legend.position = "bottom")
-
-plot_side_heatmap <- function(data, title, title_color, y_pos = "left") {
-  if(nrow(data) == 0) return(ggplot() + theme_void())
-  strain_ord <- data %>% group_by(strain_id) %>% summarise(sort_val = mean(mean_h2)) %>% arrange(sort_val) %>% pull(strain_id)
-  data$strain_id <- factor(data$strain_id, levels = strain_ord)
-  ggplot(data, aes(x = age_group, y = strain_id, fill = heritability)) +
-    geom_tile(color = "white", linewidth = 0.2) +
-    scale_fill_gradientn(colors = heatmap_colors, limits = c(0, 0.5),
-      values = scales::rescale(c(0, 0.02, 0.05, 0.08, 0.15, 0.2, 0.3, 0.5)),
-      name = "Heritability (h²)", oob = scales::squish) +
-    scale_x_discrete(labels = x_labels_short) +
-    labs(title = title, x = NULL, y = NULL) + scale_y_discrete(position = y_pos) +
-    theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-      axis.text.y = element_text(size = 8), plot.title = element_text(color = title_color, face = "bold", hjust = 0.5), panel.grid = element_blank())
-}
-
-p_left  <- plot_side_heatmap(heatmap_data %>% filter(trend_category == "Decreasing"), "Decreasing Strains", "#3288BD", "left")
-p_right <- plot_side_heatmap(heatmap_data %>% filter(trend_category == "Increasing"), "Increasing Strains", "#D53E4F", "right")
-
-p3D <- p_left + p_pie + p_right + plot_layout(widths = c(1.5, 1, 1.5), guides = "collect") &
-  theme(legend.position = "bottom", legend.box = "horizontal") &
-  plot_annotation(title = "Age-dependent Heritability Dynamics",
-    subtitle = "Color scale capped at h²=0.5 (values > 0.5 shown as darkest color)",
-    theme = theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40")))
-sp(p3D, "Fig3D_heatmap_pie", 14, 8)
+p3D <- ggplot(long_df, aes(x = metric, y = distance, fill = zygosity)) +
+  geom_violin(
+    aes(color = zygosity),
+    position = position_dodge(width = 0.75),
+    width = 0.6,
+    alpha = 0.35,
+    linewidth = 0.4,
+    show.legend = FALSE
+  ) +
+  geom_boxplot(
+    aes(group = interaction(metric, zygosity)),
+    position = position_dodge(width = 0.75),
+    width = 0.04,
+    outlier.shape = NA,
+    alpha = 0.9,
+    linewidth = 0.6,
+    show.legend = FALSE
+  ) +
+  stat_summary(
+    aes(group = interaction(metric, zygosity), color = zygosity),
+    fun = median,
+    geom = "point",
+    position = position_dodge(width = 0.75),
+    size = 1.8,
+    stroke = 0.3,
+    show.legend = FALSE
+  ) +
+  scale_fill_manual(values = c(MZ = "#00575c", DZ = "#6daaa5")) +
+  scale_color_manual(values = c(MZ = "#00575c", DZ = "#6daaa5")) +
+  scale_y_continuous(limits = c(-0.03, 1.10), expand = c(0, 0)) +
+  labs(x = NULL, y = "Within-pair strain distance") +
+  geom_text(
+    data = summary_df,
+    aes(x = metric, y = pmax(MZ_median, DZ_median) + 0.10, label = sprintf("p = %.2f", p_wilcox)),
+    inherit.aes = FALSE,
+    size = 2.6,
+    color = "black"
+  ) +
+  geom_segment(
+    data = summary_df,
+    aes(x = as.numeric(metric) - 0.32, xend = as.numeric(metric) + 0.32,
+        y = pmax(MZ_median, DZ_median) + 0.085, yend = pmax(MZ_median, DZ_median) + 0.085),
+    inherit.aes = FALSE,
+    color = "black",
+    linewidth = 0.35
+  ) +
+  theme_classic(base_size = 9, base_family = "Arial") +
+  theme(
+    axis.text = element_text(size = 8, color = "black"),
+    axis.title.y = element_text(size = 9, margin = margin(r = 6)),
+    axis.ticks = element_line(linewidth = 0.4, color = "black"),
+    axis.line = element_line(linewidth = 0.5, color = "black"),
+    panel.grid.major.y = element_line(color = "#EDEDED", linewidth = 0.35),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 8),
+    legend.key.size = unit(0.35, "cm"),
+    legend.box.spacing = unit(2, "pt"),
+    plot.margin = margin(8, 8, 4, 4, unit = "pt")
+  )
+sp(p3D, "Fig3D_revised_distance_metric_robustness", 5.6, 2.75)
 cat("  3D done.\n")
 
 cat("\nAll Fig 3 panels generated.\n")
