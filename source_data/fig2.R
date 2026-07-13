@@ -20,6 +20,10 @@ script_dir <- tryCatch({
   ofile <- sys.frame(1)$ofile
   if (is.null(ofile)) getwd() else dirname(normalizePath(ofile, winslash = "/", mustWork = FALSE))
 }, error = function(e) getwd())
+if (!file.exists(file.path(script_dir, "fig2.RData")) &&
+    file.exists(file.path(getwd(), "source_data", "fig2.RData"))) {
+  script_dir <- file.path(getwd(), "source_data")
+}
 
 load(file.path(script_dir, "fig2.RData"), verbose = TRUE)
 # Objects used here:
@@ -140,7 +144,58 @@ cat("  2B done.\n")
 # ============================================================
 cat("\n=== Fig 2E: ACE heatmap ===\n")
 if (!requireNamespace("ComplexHeatmap", quietly = TRUE) || !requireNamespace("circlize", quietly = TRUE)) {
-  cat("  Skipped: ComplexHeatmap and/or circlize is not installed.\n")
+  cat("  ComplexHeatmap/circlize not installed; using ggplot fallback.\n")
+  heat_df <- fig2E_selected_heatmap_long %>%
+    mutate(group = factor(tolower(group), levels = c("infant", "child", "adult"))) %>%
+    pivot_longer(
+      cols = c(shared_ratio, spearman_cor, prevalence, mean_abundance, A),
+      names_to = "metric",
+      values_to = "value"
+    ) %>%
+    mutate(
+      metric = recode(metric,
+        shared_ratio = "Shared ratio",
+        spearman_cor = "Twin correlation",
+        prevalence = "Prevalence",
+        mean_abundance = "Mean abundance",
+        A = "ACE A"
+      ),
+      metric = factor(metric, levels = c("Shared ratio", "Twin correlation", "Prevalence", "Mean abundance", "ACE A"))
+    ) %>%
+    group_by(metric) %>%
+    mutate(
+      display_value = ifelse(metric == "Mean abundance", log10(value + 1e-6), value),
+      value_scaled = ifelse(
+        max(display_value, na.rm = TRUE) == min(display_value, na.rm = TRUE),
+        0,
+        (display_value - min(display_value, na.rm = TRUE)) /
+          (max(display_value, na.rm = TRUE) - min(display_value, na.rm = TRUE))
+      )
+    ) %>%
+    ungroup()
+  genus_order <- fig2E_selected_heatmap_long %>%
+    group_by(genus) %>%
+    summarise(max_A = max(A, na.rm = TRUE), mean_shared = mean(shared_ratio, na.rm = TRUE), .groups = "drop") %>%
+    arrange(desc(mean_shared), desc(max_A)) %>%
+    pull(genus)
+  heat_df$genus <- factor(heat_df$genus, levels = rev(genus_order))
+  pE_fallback <- ggplot(heat_df, aes(x = group, y = genus, fill = value_scaled)) +
+    geom_tile(color = "white", linewidth = 0.15) +
+    facet_grid(. ~ metric, scales = "free_x", space = "free_x") +
+    scale_fill_viridis_c(option = "C", name = "Scaled\nvalue", limits = c(0, 1), na.value = "grey95") +
+    scale_x_discrete(labels = c(infant = "Infant", child = "Child", adult = "Adult")) +
+    labs(x = NULL, y = NULL) +
+    theme_classic(base_size = 8, base_family = "Arial") +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, color = "black"),
+      axis.text.y = element_text(size = 5.5, face = "italic", color = "black"),
+      strip.background = element_rect(fill = "grey92", color = NA),
+      strip.text = element_text(size = 7, face = "bold"),
+      legend.position = "bottom",
+      panel.spacing.x = unit(1.5, "mm")
+    )
+  save_plot(pE_fallback, "Fig2E_ACE_heatmap_fallback", 7.2, 7.6, dpi = 500)
+  cat("  2E fallback done.\n")
 } else {
 Heatmap <- ComplexHeatmap::Heatmap
 rowAnnotation <- ComplexHeatmap::rowAnnotation

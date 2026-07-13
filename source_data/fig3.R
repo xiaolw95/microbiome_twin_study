@@ -13,6 +13,10 @@ script_dir <- tryCatch({
   ofile <- sys.frame(1)$ofile
   if (is.null(ofile)) getwd() else dirname(normalizePath(ofile, winslash = "/", mustWork = FALSE))
 }, error = function(e) getwd())
+if (!file.exists(file.path(script_dir, "fig3.RData")) &&
+    file.exists(file.path(getwd(), "source_data", "fig3.RData"))) {
+  script_dir <- file.path(getwd(), "source_data")
+}
 out_dir <- file.path(script_dir, "figures")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
