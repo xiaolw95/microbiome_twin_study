@@ -91,53 +91,26 @@ df_long <- df_comp %>%
   arrange(stage_raw) %>%
   pivot_longer(cols = c(A, C, E), names_to = "component", values_to = "value") %>%
   mutate(
-    component = factor(component, levels = c("E", "C", "A")),
+    component = factor(component, levels = c("A", "C", "E")),
     x_label = case_when(
-      stage_raw == "infant" ~ paste0("Infant\n", stage_n_MZ, " MZ / ", stage_n_DZ, " DZ"),
-      stage_raw == "child"  ~ paste0("Child\u2020\n", stage_n_MZ, " MZ / ", stage_n_DZ, " DZ"),
-      stage_raw == "adult"  ~ paste0("Adult\n", stage_n_MZ, " MZ / ", stage_n_DZ, " DZ")
+      stage_raw == "infant" ~ paste0("Infant\n"),
+      stage_raw == "child"  ~ paste0("Child\n"),
+      stage_raw == "adult"  ~ paste0("Adult\n")
     )
   )
 df_long$x_label <- factor(df_long$x_label, levels = unique(df_long$x_label))
-df_label <- df_long %>%
-  filter(value >= 0.075) %>%
-  mutate(label_fontface = ifelse(component == "A", "bold", "plain"))
+
+df_long$component <- factor(df_long$component, levels = c("E","C","A"))
 
 pB <- ggplot(df_long, aes(x = x_label, y = value, fill = component)) +
   geom_col(width = 0.62, color = "white", linewidth = 0.8) +
-  geom_text(
-    data = df_label,
-    aes(label = sprintf("%.2f", value), fontface = label_fontface),
-    position = position_stack(vjust = 0.5),
-    size = 2.6,
-    color = "white",
-    show.legend = FALSE
-  ) +
   scale_fill_manual(
     values = c(A = "#D6604D", C = "#66809d", E = "#418383"),
     labels = c(expression(italic("A")), expression(italic("C")), expression(italic("E")))
   ) +
   scale_y_continuous(limits = c(0, 1.04), expand = c(0, 0)) +
   labs(y = "Pooled ACE fraction", x = NULL) +
-  guides(fill = guide_legend(title = NULL, keyheight = unit(0.35, "cm"), keywidth = unit(0.35, "cm"), order = 3)) +
-  annotate(
-    "text", x = 0.03, y = -0.12,
-    label = "\u2020 Childhood stratum has fewer twin pairs; interpret this estimate cautiously.",
-    size = 2.4, hjust = 0, color = "grey40"
-  ) +
-  theme_classic(base_size = 9, base_family = "Arial") +
-  theme(
-    axis.text.x = element_text(size = 8.5, color = "black", margin = margin(t = 4)),
-    axis.text.y = element_text(size = 8, color = "black"),
-    axis.title.y = element_text(size = 9.5, margin = margin(r = 8)),
-    axis.ticks = element_line(linewidth = 0.4, color = "black"),
-    axis.line = element_line(linewidth = 0.5, color = "black"),
-    panel.grid = element_blank(),
-    plot.margin = margin(8, 8, 20, 4, unit = "pt"),
-    legend.position = "top",
-    legend.text = element_text(size = 8.5, margin = margin(r = 6)),
-    legend.box.spacing = unit(2, "pt")
-  )
+  guides(fill = guide_legend(title = NULL, keyheight = unit(0.35, "cm"), keywidth = unit(0.35, "cm"), order = 3)) 
 save_plot(pB, "Fig2B_nature_ACE_composition", 3.6, 3.0)
 cat("  2B done.\n")
 
@@ -330,13 +303,13 @@ ht_list <- Heatmap(
           column_names_centered = TRUE, width = unit(4, "cm"), border = TRUE, rect_gp = gpar(col = "white", lwd = 1))
 
 CairoPDF(file.path(out_dir, "Fig2E_revised_ACE_heatmap.pdf"), width = 18, height = 12, family = "Arial")
-draw(ht_list + right_anno, padding = unit(c(2, 2, 2, 10), "mm"),
+draw(ht_list, padding = unit(c(2, 2, 2, 10), "mm"),
      heatmap_legend_side = "bottom", annotation_legend_side = "bottom", merge_legend = TRUE)
 grid.text("* Shared ratio > 0.5  \u25cf Shared ratio > 0.7", x = 0.5, y = 0.02,
           gp = gpar(fontsize = 10, fontface = "italic"))
 dev.off()
 png(file.path(out_dir, "Fig2E_revised_ACE_heatmap.png"), width = 18, height = 12, units = "in", res = 150, bg = "white")
-draw(ht_list + right_anno, padding = unit(c(2, 2, 2, 10), "mm"),
+draw(ht_list, padding = unit(c(2, 2, 2, 10), "mm"),
      heatmap_legend_side = "bottom", annotation_legend_side = "bottom", merge_legend = TRUE)
 grid.text("* Shared ratio > 0.5  \u25cf Shared ratio > 0.7", x = 0.5, y = 0.02,
           gp = gpar(fontsize = 10, fontface = "italic"))
@@ -361,7 +334,6 @@ panel_list <- lapply(axes, function(ax) {
   ggplot(plot_df, aes(x = ACE_A, y = y_val, color = prevalence)) +
     geom_point(size = 1.8, alpha = 0.78, stroke = 0.2) +
     scale_color_viridis_c(option = "D", direction = -1, name = "Prevalence") +
-    geom_smooth(method = "lm", se = FALSE, color = ax$color, linewidth = 0.8, linetype = "dashed") +
     annotate("text", x = -Inf, y = Inf,
              label = sprintf("\u03c1 = %.2f\n%s", sp$estimate, p_str),
              hjust = -0.05, vjust = 1.5, size = 2.8, color = "grey30") +

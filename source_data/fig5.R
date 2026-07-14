@@ -75,13 +75,15 @@ effect_all <- bind_rows(
   calc_effect_size(fig5_path_tvr) %>% mutate(Metric = "Pathway Similarity")) %>%
   mutate(Metric = factor(Metric, levels = c("Network Similarity","Hub Concordance","Pathway Similarity")))
 
+effect_all$Age_Group <- factor(effect_all$Age_Group, c("Infant","Child", "Adult"))
+effect_all$Metric <- factor(effect_all$Metric, c("Pathway Similarity","Hub Concordance", "Network Similarity"))
+
 p5A <- ggplot(effect_all, aes(x = Age_Group, y = Metric, fill = Effect_Size)) +
   geom_tile(color = "white", linewidth = 1) +
   geom_text(aes(label = sprintf("%.2f", Effect_Size)), size = 3, fontface = "bold") +
   scale_fill_gradient2(low = "#4DBBD5", mid = "white", high = "#E64B35", midpoint = 0,
     limits = c(-0.5, 3), name = "Effect size\n(Cohen's d)") +
-  labs(x = NULL, y = NULL, title = "a") +
-  theme_nature() + theme(legend.position = "right", axis.text.x = element_text(angle = 0, hjust = 0.5))
+  labs(x = NULL, y = NULL, title = "a")
 sp(p5A, "Fig5A_effect_heatmap", 5, 3)
 cat("  5A done.\n")
 
@@ -104,14 +106,15 @@ improve_all <- bind_rows(
   calc_improvement(fig5_path_tvr) %>% mutate(Metric = "Pathway Similarity")) %>%
   mutate(Metric = factor(Metric, levels = c("Network Similarity","Hub Concordance","Pathway Similarity")))
 
+improve_all$Age_Group <- factor(improve_all$Age_Group, c("Infant","Child", "Adult"))
+
 p5B <- ggplot(improve_all, aes(x = Age_Group, y = Improvement, color = Metric, group = Metric)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.3) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 2.5, shape = 21, fill = "white", stroke = 1.2) +
   geom_errorbar(aes(ymin = Improvement - SE_Improvement, ymax = Improvement + SE_Improvement), width = 0.15, linewidth = 0.6) +
   scale_color_manual(values = c("Network Similarity" = "#4DBBD5", "Hub Concordance" = "#E64B35", "Pathway Similarity" = "#00A087"), name = NULL) +
-  labs(x = "Age group", y = "Twin advantage over random (%)", title = "b") +
-  theme_nature() + theme(legend.position = c(0.7, 0.2), legend.background = element_rect(fill = "white", color = "black", linewidth = 0.3))
+  labs(x = "Age group", y = "Twin advantage over random (%)", title = "b")
 sp(p5B, "Fig5B_trend", 5, 4)
 cat("  5B done.\n")
 
@@ -128,6 +131,9 @@ gradient_all <- bind_rows(
   prepare_gradient(fig5_net_3g, "Network\nSimilarity"),
   prepare_gradient(fig5_path_3g, "Pathway\nSimilarity")) %>%
   mutate(Metric = factor(Metric, levels = c("Network\nSimilarity","Hub\nConcordance","Pathway\nSimilarity")))
+
+gradient_all$Age_Group <- factor(gradient_all$Age_Group, c("Infant","Child", "Adult"))
+gradient_all$Group <- factor(gradient_all$Group, c("Random","DZ","MZ"))
 
 p5C <- ggplot(gradient_all, aes(x = Metric, y = Mean, fill = Group)) +
   geom_col(position = position_dodge(0.8), width = 0.7, color = "black", linewidth = 0.3) +

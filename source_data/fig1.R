@@ -107,21 +107,7 @@ p_distance_histogram <- ggplot(plot_dt, aes(x = distance)) +
   scale_color_manual(values = hist_colors, name = NULL) +
   scale_x_continuous(limits = c(0, 1.05), expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0.02)) +
-  labs(x = "Bray-Curtis distance", y = "Density",
-       subtitle = paste0(
-         "Twin (n=", counts[pair_type == "Twin pairs", N],
-         ", med=", sprintf("%.3f", medians[pair_type == "Twin pairs", median_BC]), ") | ",
-         "Same country/age (n=", counts[pair_type == "Random same country and age", N],
-         ", med=", sprintf("%.3f", medians[pair_type == "Random same country and age", median_BC]), ") | ",
-         "Different country/age (n=", counts[pair_type == "Random different country and age", N],
-         ", med=", sprintf("%.3f", medians[pair_type == "Random different country and age", median_BC]), ")")) +
-  theme_classic(base_size = 11) +
-  theme(text = element_text(family = "Arial"),
-        plot.subtitle = element_text(size = 8.5, color = "grey40"),
-        legend.position = c(0.75, 0.85),
-        legend.background = element_rect(fill = alpha("white", 0.8), color = NA),
-        legend.key.size = unit(0.8, "lines"),
-        legend.text = element_text(size = 8.5))
+  labs(x = "Bray-Curtis distance", y = "Density") 
 sp(p_distance_histogram, "Fig1C_distance_histogram", 8, 5)
 cat("  1C done.\n")
 
@@ -151,20 +137,10 @@ p_twin_excess <- ggplot() +
     color = "#2B7A78", linewidth = 0.95) +
   geom_point(data = all_dt, aes(x = age_group, y = excess_similarity),
     color = "#2B7A78", size = 2.4) +
-  geom_text(data = all_dt,
-    aes(x = age_group, y = ci_high + 0.018, label = paste0("n=", n_twin)),
-    size = 2.2, color = "grey30") +
   scale_color_manual(values = c("MZ twins" = "#8FA6C1", "DZ twins" = "#A9D5D1"), name = NULL,
                      labels = c("MZ", "DZ")) +
   coord_cartesian(ylim = c(0, max(excess_dt$ci_high, na.rm = TRUE) + 0.05)) +
-  labs(x = "Age group", y = "Excess co-twin similarity") +
-  theme_classic(base_size = 10) +
-  theme(text = element_text(family = "Arial"),
-        legend.position = c(0.78, 0.80),
-        legend.background = element_rect(fill = alpha("white", 0.75), color = NA),
-        axis.text = element_text(color = "black"),
-        axis.title = element_text(color = "black"),
-        panel.grid = element_blank())
+  labs(x = "Age group", y = "Excess co-twin similarity")
 sp(p_twin_excess, "Fig1D_excess_similarity", 3.4, 2.4)
 cat("  1D done.\n")
 

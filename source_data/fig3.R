@@ -108,7 +108,6 @@ p4 <- make_effect_plot(plot_data, "heritability", "heritability_significant", "H
 
 p3A <- p1 + p2 + p3 + p4 + plot_layout(ncol = 4, widths = c(1.3, 1, 1, 1)) +
   plot_annotation(title = "Four-Dimensional Effect Size Analysis",
-    subtitle = sprintf("Analysis of %d strains", nrow(plot_data)),
     theme = theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
       plot.subtitle = element_text(size = 11, hjust = 0.5, color = "grey30")))
 sp(p3A, "Fig3A_strain_effects", 14, 8)
